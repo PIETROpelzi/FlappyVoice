@@ -27,7 +27,10 @@ public class Pipe {
         this.screenHeight = screenHeight;
         this.width = 120;
         this.x = screenWidth;
-        this.gap = 400;
+        
+        // GAP AUMENTATO! Da 400 a 550 pixel (molto più facile)
+        this.gap = 550;
+        
         this.speed = 6;
         this.scored = false;
         

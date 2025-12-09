@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -13,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GameView extends SurfaceView implements Runnable {
+    
+    private static final String TAG = "GameView";
     
     private Thread gameThread;
     private SurfaceHolder holder;
@@ -32,13 +35,19 @@ public class GameView extends SurfaceView implements Runnable {
     private Paint scorePaint;
     private Paint gameOverPaint;
     private Paint instructionPaint;
+    private Paint warningPaint;
     
     private int screenWidth;
     private int screenHeight;
     
+    private boolean isTouching = false;
+    private boolean voiceControlEnabled = false;
+    
     public GameView(Context context) {
         super(context);
         holder = getHolder();
+        
+        Log.d(TAG, "GameView created");
         
         // Inizializza le paint
         scorePaint = new Paint();
@@ -62,52 +71,105 @@ public class GameView extends SurfaceView implements Runnable {
         instructionPaint.setShadowLayer(3, 1, 1, Color.BLACK);
         instructionPaint.setAntiAlias(true);
         
-        voiceDetector = new VoiceDetector(context);
+        warningPaint = new Paint();
+        warningPaint.setColor(Color.YELLOW);
+        warningPaint.setTextSize(35);
+        warningPaint.setTextAlign(Paint.Align.CENTER);
+        warningPaint.setShadowLayer(3, 1, 1, Color.BLACK);
+        warningPaint.setAntiAlias(true);
+        
+        try {
+            voiceDetector = new VoiceDetector(context);
+            Log.d(TAG, "VoiceDetector initialized");
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing VoiceDetector: " + e.getMessage());
+        }
     }
     
     private void initGame() {
-        pipes = new ArrayList<>();
-        score = 0;
-        isGameOver = false;
-        isStarted = true;
-        lastPipeTime = System.currentTimeMillis();
-        
-        bird = new Bird(screenWidth, screenHeight);
-        background = new Background(screenWidth, screenHeight);
-        
-        voiceDetector.start();
+        try {
+            pipes = new ArrayList<>();
+            score = 0;
+            isGameOver = false;
+            isStarted = true;
+            lastPipeTime = System.currentTimeMillis();
+            
+            if (screenWidth > 0 && screenHeight > 0) {
+                bird = new Bird(screenWidth, screenHeight);
+                background = new Background(screenWidth, screenHeight);
+                Log.d(TAG, "Game initialized with screen: " + screenWidth + "x" + screenHeight);
+            } else {
+                Log.e(TAG, "Invalid screen dimensions");
+            }
+            
+            if (voiceDetector != null) {
+                voiceDetector.start();
+                // Controlla se il voice detector funziona dopo 100ms
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(100);
+                            voiceControlEnabled = voiceDetector.isInitialized();
+                            Log.d(TAG, "Voice control enabled: " + voiceControlEnabled);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+                Log.d(TAG, "Voice detection started");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing game: " + e.getMessage());
+        }
     }
     
     @Override
     public void run() {
+        Log.d(TAG, "Game loop started");
         while (isPlaying) {
             long startTime = System.currentTimeMillis();
             
-            update();
-            draw();
+            try {
+                update();
+                draw();
+            } catch (Exception e) {
+                Log.e(TAG, "Error in game loop: " + e.getMessage());
+            }
             
             long timeThisFrame = System.currentTimeMillis() - startTime;
             if (timeThisFrame < 16) {
                 try {
                     Thread.sleep(16 - timeThisFrame);
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Sleep interrupted: " + e.getMessage());
                 }
             }
         }
+        Log.d(TAG, "Game loop stopped");
     }
     
     private void update() {
-        if (!isStarted || isGameOver) {
+        if (!isStarted || isGameOver || bird == null) {
             return;
         }
         
         // Aggiorna il background
-        background.update();
+        if (background != null) {
+            background.update();
+        }
         
-        // Controlla il livello audio e aggiorna l'uccello
-        boolean isVoiceDetected = voiceDetector.isVoiceDetected();
-        bird.update(isVoiceDetected);
+        // Controlla il livello audio E il touch come backup
+        boolean shouldFly = false;
+        
+        if (voiceControlEnabled && voiceDetector != null) {
+            shouldFly = voiceDetector.isVoiceDetected();
+        } else {
+            // Fallback: usa il touch
+            shouldFly = isTouching;
+        }
+        
+        bird.update(shouldFly);
         
         // Spawna nuovi tubi
         long currentTime = System.currentTimeMillis();
@@ -172,67 +234,127 @@ public class GameView extends SurfaceView implements Runnable {
     
     private void gameOver() {
         isGameOver = true;
-        voiceDetector.stop();
+        if (voiceDetector != null) {
+            voiceDetector.stop();
+        }
+        Log.d(TAG, "Game Over - Score: " + score);
     }
     
     private void draw() {
         if (holder.getSurface().isValid()) {
-            Canvas canvas = holder.lockCanvas();
-            
-            // Disegna lo sfondo
-            background.draw(canvas);
-            
-            if (!isStarted) {
-                // Schermata iniziale
-                instructionPaint.setTextSize(60);
-                canvas.drawText("FLAPPY VOICE", screenWidth / 2, screenHeight / 3, instructionPaint);
-                instructionPaint.setTextSize(40);
-                canvas.drawText("Fai rumore per volare!", screenWidth / 2, screenHeight / 2, instructionPaint);
-                canvas.drawText("Tocca per iniziare", screenWidth / 2, screenHeight / 2 + 80, instructionPaint);
-            } else {
-                // Disegna i tubi
-                for (Pipe pipe : pipes) {
-                    pipe.draw(canvas);
+            Canvas canvas = null;
+            try {
+                canvas = holder.lockCanvas();
+                
+                if (canvas == null) {
+                    return;
                 }
                 
-                // Disegna l'uccello
-                bird.draw(canvas);
-                
-                // Disegna il punteggio
-                canvas.drawText("" + score, screenWidth / 2, 100, scorePaint);
-                
-                // Indicatore voce
-                if (voiceDetector.isVoiceDetected()) {
-                    Paint voiceIndicator = new Paint();
-                    voiceIndicator.setColor(Color.GREEN);
-                    voiceIndicator.setAlpha(150);
-                    canvas.drawCircle(80, 80, 30, voiceIndicator);
+                // Disegna lo sfondo
+                if (background != null) {
+                    background.draw(canvas);
+                } else {
+                    canvas.drawColor(Color.rgb(135, 206, 235));
                 }
                 
-                if (isGameOver) {
-                    canvas.drawText("GAME OVER", screenWidth / 2, screenHeight / 2 - 50, gameOverPaint);
-                    canvas.drawText("Score: " + score, screenWidth / 2, screenHeight / 2 + 50, scorePaint);
-                    canvas.drawText("Tocca per riavviare", screenWidth / 2, screenHeight / 2 + 150, instructionPaint);
+                if (!isStarted) {
+                    // Schermata iniziale
+                    instructionPaint.setTextSize(60);
+                    canvas.drawText("FLAPPY VOICE", screenWidth / 2f, screenHeight / 3f, instructionPaint);
+                    instructionPaint.setTextSize(40);
+                    canvas.drawText("Fai rumore per volare!", screenWidth / 2f, screenHeight / 2f, instructionPaint);
+                    canvas.drawText("Tocca per iniziare", screenWidth / 2f, screenHeight / 2f + 80, instructionPaint);
+                } else {
+                    // Disegna i tubi
+                    for (Pipe pipe : pipes) {
+                        pipe.draw(canvas);
+                    }
+                    
+                    // Disegna l'uccello
+                    if (bird != null) {
+                        bird.draw(canvas);
+                    }
+                    
+                    // Disegna il punteggio
+                    canvas.drawText("" + score, screenWidth / 2f, 100, scorePaint);
+                    
+                    // Indicatore voce o touch
+                    if (voiceControlEnabled) {
+                        if (voiceDetector != null && voiceDetector.isVoiceDetected()) {
+                            Paint voiceIndicator = new Paint();
+                            voiceIndicator.setColor(Color.GREEN);
+                            voiceIndicator.setAlpha(150);
+                            canvas.drawCircle(80, 80, 30, voiceIndicator);
+                            
+                            Paint textPaint = new Paint();
+                            textPaint.setColor(Color.WHITE);
+                            textPaint.setTextSize(30);
+                            textPaint.setAntiAlias(true);
+                            canvas.drawText("MIC", 80, 150, textPaint);
+                        }
+                    } else {
+                        // Mostra indicatore touch
+                        if (isTouching) {
+                            Paint touchIndicator = new Paint();
+                            touchIndicator.setColor(Color.CYAN);
+                            touchIndicator.setAlpha(150);
+                            canvas.drawCircle(80, 80, 30, touchIndicator);
+                        }
+                        
+                        Paint textPaint = new Paint();
+                        textPaint.setColor(Color.WHITE);
+                        textPaint.setTextSize(30);
+                        textPaint.setAntiAlias(true);
+                        textPaint.setTextAlign(Paint.Align.LEFT);
+                        canvas.drawText("TOUCH", 50, 150, textPaint);
+                    }
+                    
+                    if (isGameOver) {
+                        canvas.drawText("GAME OVER", screenWidth / 2f, screenHeight / 2f - 50, gameOverPaint);
+                        canvas.drawText("Score: " + score, screenWidth / 2f, screenHeight / 2f + 50, scorePaint);
+                        canvas.drawText("Tocca per riavviare", screenWidth / 2f, screenHeight / 2f + 150, instructionPaint);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error drawing: " + e.getMessage());
+            } finally {
+                if (canvas != null) {
+                    try {
+                        holder.unlockCanvasAndPost(canvas);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error unlocking canvas: " + e.getMessage());
+                    }
                 }
             }
-            
-            holder.unlockCanvasAndPost(canvas);
         }
     }
     
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            if (!isStarted) {
-                initGame();
-            } else if (isGameOver) {
-                initGame();
-            }
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (!isStarted) {
+                    initGame();
+                } else if (isGameOver) {
+                    initGame();
+                } else {
+                    // Durante il gioco, se il voice control non funziona, usa il touch
+                    if (!voiceControlEnabled) {
+                        isTouching = true;
+                    }
+                }
+                break;
+                
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                isTouching = false;
+                break;
         }
         return true;
     }
     
     public void pause() {
+        Log.d(TAG, "Pausing game");
         isPlaying = false;
         if (voiceDetector != null) {
             voiceDetector.stop();
@@ -242,11 +364,12 @@ public class GameView extends SurfaceView implements Runnable {
                 gameThread.join();
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error joining game thread: " + e.getMessage());
         }
     }
     
     public void resume() {
+        Log.d(TAG, "Resuming game");
         isPlaying = true;
         gameThread = new Thread(this);
         gameThread.start();
@@ -257,6 +380,7 @@ public class GameView extends SurfaceView implements Runnable {
     }
     
     public void destroy() {
+        Log.d(TAG, "Destroying game");
         if (voiceDetector != null) {
             voiceDetector.release();
         }
@@ -267,5 +391,6 @@ public class GameView extends SurfaceView implements Runnable {
         super.onSizeChanged(w, h, oldw, oldh);
         screenWidth = w;
         screenHeight = h;
+        Log.d(TAG, "Screen size: " + w + "x" + h);
     }
 }
