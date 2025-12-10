@@ -6,7 +6,6 @@
 - ✅ Controllo vocale
 - ✅ Grafica 2D personalizzata
 - ✅ Sistema di punteggio
-- ✅ Difficoltà ottimizzabile
 
 ---
 
