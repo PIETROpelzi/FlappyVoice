@@ -12,7 +12,7 @@
 
 ## 🎯 Panoramica
 
-**Flappy Voice** è un gioco Android ispirato a Flappy Bird, ma controllato completamente con la **voce**. Il giocatore deve fare rumore (parlare, urlare, fischiare, battere le mani) per far volare un pappagallo verde attraverso tubi verdi.
+**Flappy Voice** è un gioco Android ispirato a Flappy Bird, ma controllato completamente con la **voce**. Il giocatore deve fare parlare per far volare un pappagallo attraverso i tubi.
 
 ### 🔑 Caratteristiche Principali:
 - ✅ Controllo vocale in tempo reale
