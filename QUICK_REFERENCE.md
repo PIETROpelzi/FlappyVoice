@@ -134,23 +134,3 @@ Thread.sleep(16);    // 60 FPS (16ms per frame)
 // Per 30 FPS: Thread.sleep(33);
 ```
 
----
-
-## 🐛 DEBUG
-
-### Attiva Log Dettagliati
-```java
-// VoiceDetector.java linea ~185
-// Decommenta questa riga per vedere ampiezza audio
-Log.d(TAG, "Audio amplitude: " + amplitude + ", Voice detected: " + voiceDetected);
-```
-
-### Mostra FPS
-```java
-// GameView.java nel metodo draw(), aggiungi:
-long fps = 1000 / timeThisFrame;
-canvas.drawText("FPS: " + fps, 100, 100, scorePaint);
-```
-
----
-
