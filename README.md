@@ -307,17 +307,6 @@ private void draw() {
     holder.unlockCanvasAndPost(canvas);  // Mostra frame
 }
 ```
-
-### 🎤 **Indicatore Audio** (GameView.java ~285)
-```java
-// Cerchio verde quando rileva voce
-if (voiceDetector.isVoiceDetected()) {
-    Paint voiceIndicator = new Paint();
-    voiceIndicator.setColor(Color.GREEN);
-    canvas.drawCircle(80, 80, 30, voiceIndicator);
-}
-```
-
 ---
 
 ## ⚙️ Configurazione e Personalizzazione
@@ -395,21 +384,7 @@ skyPaint.setColor(Color.rgb(135, 206, 235));  // Azzurro
 - Ogni tubo superato = +1 punto
 - Non uscire dallo schermo
 - Fai il punteggio più alto!
-
 ---
-
-## 🛠️ Troubleshooting
-
-### Microfono non funziona?
-1. Usa un **dispositivo fisico** (non emulatore)
-2. Verifica permesso: Impostazioni → App → Flappy Voice → Permessi
-3. Modifica `AMPLITUDE_THRESHOLD` in VoiceDetector.java
-4. Controlla Logcat per errori AudioRecord
-
-### App crasha?
-1. Build → Clean Project
-2. Build → Rebuild Project
-3. Disinstalla e reinstalla l'app
 
 ### Troppo difficile?
 1. Aumenta `gap` in Pipe.java (da 550 a 650+)
