@@ -122,7 +122,7 @@ private static final long PIPE_SPAWN_INTERVAL = 2000; // Frequenza tubi (ms)
 ### 3️⃣ **VoiceDetector.java**
 **Posizione:** `app/src/main/java/com/example/flappyvoice/VoiceDetector.java`
 
-**Scopo:** Rileva il suono dal microfono in tempo reale usando AudioRecord.
+**Scopo:** Rileva il suono dal microfono in tempo reale usando AudioRecord(NON SONO STATO IN GRADO DI OTTIMIZZARLO).
 
 #### 📌 Funzioni Importanti:
 
