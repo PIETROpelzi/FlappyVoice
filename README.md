@@ -1,15 +1,3 @@
-# 🎮 Flappy Voice - Documentazione Tecnica
-
-## 📖 Indice
-1. [Panoramica](#panoramica)
-2. [Struttura del Progetto](#struttura-del-progetto)
-3. [Classi Principali](#classi-principali)
-4. [Funzioni Importanti](#funzioni-importanti)
-5. [Configurazione e Personalizzazione](#configurazione-e-personalizzazione)
-6. [Come Giocare](#come-giocare)
-
----
-
 ## 🎯 Panoramica
 
 **Flappy Voice** è un gioco Android ispirato a Flappy Bird, ma controllato completamente con la **voce**. Il giocatore deve fare parlare per far volare un pappagallo attraverso i tubi.
